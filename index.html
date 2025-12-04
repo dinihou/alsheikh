@@ -1,1 +1,125 @@
-<html><body><h1>Hello World! from me</h1></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browser Fingerprint Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f7f7f7;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        pre {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .id {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #0066cc;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #0066cc;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Browser Fingerprint</h1>
+    <p>This page collects common browser fingerprinting attributes and generates a unique visitor identifier.</p>
+
+    <div id="result">
+        <p>Loading fingerprint... <span id="loading">⠋</span></p>
+    </div>
+
+    <script>
+        // Load and initialize FingerprintJS
+        FingerprintJS.load().then(fp => {
+            // Get the visitor identifier and all components
+            fp.get().then(result => {
+                const visitorId = result.visitorId;
+                const components = result.components;
+
+                document.getElementById('loading').style.display = 'none';
+
+                // Display the unique visitor ID prominently
+                document.getElementById('result').innerHTML = `
+      <p><strong>Visitor ID (128-bit hash):</strong> <span class="id">${visitorId}</span></p>
+      <p>Copy the ID above – it will be the same every time you visit from this exact browser/device (until you clear certain data).</p>
+      <h2>Detailed Fingerprint Components</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Attribute</th>
+            <th>Value</th>
+            <th>Confidence (bits of entropy)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Object.keys(components).map(key => {
+                    const c = components[key];
+                    const value = c.value !== undefined && c.value !== null ? String(c.value) : '—';
+                    const duration = c.duration ? `${c.duration.toFixed(0)} ms` : '';
+                    const entropy = c.duration !== undefined ? `${(c.duration / 1000).toFixed(2)} bits` : '—';
+                    return `
+              <tr>
+                <td><strong>${key}</strong></td>
+                <td>${escapeHtml(value)}${duration ? `<br><small>${duration}</small>` : ''}</td>
+                <td>${entropy}</td>
+              </tr>`;
+                }).join('')}
+        </tbody>
+      </table>
+      <p><small>Total confidence: ${result.confidence?.score?.toFixed(4) || 'N/A'} 
+         (higher = more unique)</small></p>
+    `;
+            });
+        });
+
+        // Simple HTML escape function
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+
+    <p><small>
+            Powered by <a href="https://fingerprint.com" target="_blank">FingerprintJS Open Source</a> –
+            no data is sent to any server from this page.
+        </small></p>
+
+</body>
+
+</html>
