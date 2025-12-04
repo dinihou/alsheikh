@@ -47,7 +47,7 @@
 
 <script>
 // 1. IP + Location – matches your exact JSON structure
-fetch('https://freeipapi.com/api/json/')
+fetch('https://free.freeipapi.com/api/json/')
   .then(r => r.json())
   .then(d => {
     const flag = d.countryCode ? String.fromCodePoint(...[...d.countryCode].map(c => 0x1F1A5 + c.charCodeAt(0))) : '';
