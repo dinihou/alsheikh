@@ -8,8 +8,8 @@
   <!-- FingerprintJS -->
   <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
 
-  <!-- Fixed device detector (varienos – works great for models, OS, browser) -->
-  <script src="https://unpkg.com/@varienos/device-detector-js@1.5.3/dist/device-detector.min.js"></script>
+  <!-- UAParser.js – reliable UA parser with device model detection -->
+  <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@2/dist/ua-parser.min.js"></script>
 
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; line-height: 1.7; }
@@ -47,22 +47,15 @@
 </div>
 
 <script>
-// 1. IP (using ipify.org – simple, reliable, no limits)
-fetch('https://api.ipify.org?format=json')
+// 1. IP + Location (using freeipapi.com – free, no key, full details in one call)
+fetch('https://free.freeipapi.com/api/json/')
   .then(r => r.json())
-  .then(ipData => {
-    const ip = ipData.ip;
-    // Then get location using ip-api.com with the IP
-    return fetch(`http://ip-api.com/json/${ip}?fields=country,countryCode,regionName,city,isp,org,timezone`)
-      .then(r => r.json())
-      .then(d => ({ ip, ...d }));
-  })
   .then(d => {
-    if (d.status !== 'success') throw new Error(d.message || 'Unknown error');
+    const countryFlag = d.country_code ? String.fromCodePoint(...[...d.country_code].map(c => 0x1F1A5 + c.charCodeAt(0))) : '';
     document.getElementById('network').innerHTML = `
-      <div class="row"><span class="label">IP Address</span><span class="value">${d.ip || '—'}</span></div>
-      <div class="row"><span class="label">Location</span><span class="value"><span class="emoji">${d.countryCode ? String.fromCodePoint(...[...d.countryCode].map(c => 0x1F1A5 + c.charCodeAt(0))) : ''}</span>${d.city}, ${d.regionName}, ${d.country}</span></div>
-      <div class="row"><span class="label">ISP / Network</span><span class="value">${d.isp || d.org || '—'}</span></div>
+      <div class="row"><span class="label">IP Address</span><span class="value">${d.ip_address || '—'}</span></div>
+      <div class="row"><span class="label">Location</span><span class="value"><span class="emoji">${countryFlag}</span>${d.city}, ${d.region_name || d.region}, ${d.country_name}</span></div>
+      <div class="row"><span class="label">ISP / Network</span><span class="value">${d.org || d.isp || '—'}</span></div>
       <div class="row"><span class="label">Timezone</span><span class="value">${d.timezone || '—'}</span></div>
     `;
   })
@@ -70,17 +63,17 @@ fetch('https://api.ipify.org?format=json')
     document.getElementById('network').innerHTML = '<div class="row"><span class="label">Error</span><span class="value">Could not fetch: ' + e.message + '</span></div>';
   });
 
-// 2. Device Detection (new library – accurate for Android, iPhone models, etc.)
-const detector = new DeviceDetector();
-const parsed = detector.parse();
+// 2. Device Detection (UAParser.js – accurate for models, OS, etc.)
+const parser = new UAParser();
+const parsed = parser.getResult();
 
-const deviceType = parsed.device?.type || 'Unknown';
-const brand = parsed.device?.vendor || parsed.os?.name || '';
-const model = parsed.device?.model || '';
-const deviceName = (brand && model) ? `${brand} ${model}` : (brand || model || 'Generic Device');
+const deviceType = parsed.device.type || 'desktop'; // 'mobile', 'tablet', 'desktop'
+const vendor = parsed.device.vendor || '';
+const model = parsed.device.model || '';
+const deviceName = (vendor && model) ? `${vendor} ${model}` : (vendor || model || 'Generic Device');
 
-const osName = parsed.os?.name || 'Unknown OS';
-const osVersion = parsed.os?.version || '';
+const osName = parsed.os.name || 'Unknown OS';
+const osVersion = parsed.os.version || '';
 const os = osVersion ? `${osName} ${osVersion}` : osName;
 
 document.getElementById('device').innerHTML = `
@@ -90,8 +83,8 @@ document.getElementById('device').innerHTML = `
 `;
 
 // 3. Browser
-const browserName = parsed.client?.name || 'Unknown Browser';
-const browserVersion = parsed.client?.version || '';
+const browserName = parsed.browser.name || 'Unknown Browser';
+const browserVersion = parsed.browser.version || '';
 const browser = browserVersion ? `${browserName} ${browserVersion.split('.')[0]}` : browserName;
 
 document.getElementById('browser').innerHTML = `
