@@ -19,7 +19,7 @@
     .row:last-child { border-bottom: none; }
     .label { color: #94a3b8; font-weight: 500; }
     .value { color: #c4b5fd; font-weight: 600; word-break: break-all; }
-    .fingerprint { background: #1e3a8a; padding: 16px; border-radius: 12px; font-family: 'Courier New', monospace; font-size: 1.1em; text-align: center; margin-top: 12px; }
+    .fingerprint { background: #1e3a8a; padding: 16px; border-radius: 12px; font-family: 'Courier New', monospace; font-size: 0.7em; text-align: center; margin-top: 12px; }
     .flag { font-size: 1.4em; margin-right: 8px; }
   </style>
 </head>
@@ -90,9 +90,7 @@ const browser = r.browser.name && r.browser.version
   : (r.browser.name || 'Unknown Browser');
 
 document.getElementById('browser').innerHTML = `
-  <div class="row"><span class="label">Browser</span><span class="value">${browser}</span></div>
-  <div class="row"><span class="label">Full User Agent</span><span class="value" style="font-size:0.8em;">${navigator.userAgent}</span></div>
-`;
+  <div class="row"><span class="label">Browser</span><span class="value">${browser}</span></div>`;
 
 // 4. Fingerprint
 FingerprintJS.load().then(fp => {
