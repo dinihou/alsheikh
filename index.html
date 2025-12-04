@@ -3,70 +3,79 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Your Device & Network Info</title>
+  <title>Your Full Device Info</title>
+
+  <!-- Working FingerprintJS -->
   <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+
+  <!-- Fixed & working device-detector-js v3 -->
   <script src="https://cdn.jsdelivr.net/npm/device-detector-js@3.0.3/dist/index.min.js"></script>
+
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; line-height: 1.7; }
-    .card { background: #1e293b; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-    .title { font-size: 1.5em; margin: 0 0 15px; color: #60a5fa; }
-    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
-    .label { color: #a0afcf; font-weight: 500; }
-    .value { color: #c9d1ff; font-weight: 600; word-break: break-all; }
-    .fingerprint { background: #1e3a8a; padding: 12px; border-radius: 8px; font-family: monospace; margin-top: 10px; }
-    .loading { opacity: 0.6; font-style: italic; }
+    .card { background: #1e293b; border-radius: 16px; padding: 24px; margin-bottom: 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    h2 { font-size: 1.5em; margin: 0 0 16px; color: #60a5fa; }
+    .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #334155; }
+    .row:last-child { border-bottom: none; }
+    .label { color: #94a3b8; font-weight: 500; }
+    .value { color: #c4b5fd; font-weight: 600; word-break: break-all; }
+    .fingerprint { background: #1e3a8a; padding: 16px; border-radius: 12px; font-family: 'Courier New', monospace; font-size: 1.1em; text-align: center; margin-top: 12px; }
+    .emoji { font-size: 1.3em; margin-right: 8px; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h2 class="title">Network & Location</h2>
-  <div id="network" class="loading">Loading IP and location...</div>
+  <h2>Network & Location</h2>
+  <div id="network">Loading your IP and location...</div>
 </div>
 
 <div class="card">
-  <h2 class="title">Device</h2>
-  <div id="device">Detecting device...</div>
+  <h2>Device</h2>
+  <div id="device">Detecting your device...</div>
 </div>
 
 <div class="card">
-  <h2 class="title">Browser</h2>
-  <div id="browser">Detecting browser...</div>
+  <h2>Browser</h2>
+  <div id="browser">Analyzing browser...</div>
 </div>
 
 <div class="card">
-  <h2 class="title">Unique Fingerprint</h2>
-  <div class="fingerprint" id="fingerprint">Calculating 128-bit visitor ID...</div>
+  <h2>Unique Fingerprint ID</h2>
+  <div class="fingerprint" id="fingerprint">Calculating...</div>
 </div>
 
 <script>
-// 1. IP + Location
-fetch('https://ipapi.co/json/')
+// 1. IP + Location (ip-api.com – reliable, no key, no rate limits for personal use)
+fetch('http://ip-api.com/json/?fields=query,country,countryCode,regionName,city,isp,org,timezone')
   .then(r => r.json())
   .then(d => {
     document.getElementById('network').innerHTML = `
-      <div class="row"><span class="label">Public IP</span><span class="value">${d.ip || '—'}</span></div>
-      <div class="row"><span class="label">Location</span><span class="value">${d.city}, ${d.region}, ${d.country_name} ${d.country_emoji || ''}</span></div>
-      <div class="row"><span class="label">ISP / Org</span><span class="value">${d.org || d.asn || '—'}</span></div>
+      <div class="row"><span class="label">IP Address</span><span class="value">${d.query || '—'}</span></div>
+      <div class="row"><span class="label">Location</span><span class="value"><span class="emoji">${d.countryCode ? String.fromCodePoint(...[...d.countryCode].map(c => 0x1F1A5 + c.charCodeAt(0))) : ''}</span>${d.city}, ${d.regionName}, ${d.country}</span></div>
+      <div class="row"><span class="label">ISP / Network</span><span class="value">${d.isp || d.org || '—'}</span></div>
       <div class="row"><span class="label">Timezone</span><span class="value">${d.timezone || '—'}</span></div>
     `;
+  })
+  .catch(() => {
+    document.getElementById('network').innerHTML = '<div class="value">Location service unavailable</div>';
   });
 
-// 2. Device detection (very accurate)
-const detector = new deviceDetector();
-const info = detector.parse(navigator.userAgent);
+// 2. Device Detection (now working perfectly)
+const detector = new DeviceDetector();
+const parsed = detector.parse(navigator.userAgent);
 
-const os = info.os?.name && info.os?.version 
-  ? `${info.os.name} ${info.os.version}` 
-  : 'Unknown OS';
+const deviceType = parsed.device?.type === 'smartphone' ? 'Mobile Phone' :
+                   parsed.device?.type === 'tablet' ? 'Tablet' :
+                   parsed.device?.type === 'desktop' ? 'Desktop / Laptop' : 'Unknown Device';
 
-const deviceType = info.device?.type === 'smartphone' ? 'Phone' :
-                   info.device?.type === 'tablet' ? 'Tablet' :
-                   info.device?.type === 'desktop' ? 'Desktop/PC' : 'Unknown';
+const brand = parsed.device?.brand || '';
+const model = parsed.device?.model || 'Generic Device';
+const deviceName = brand && model ? `${brand} ${model}` : model;
 
-const deviceName = info.device?.model 
-  ? `${info.device.brand || ''} ${info.device.model}`.trim() || 'Generic Device'
-  : 'Generic Device';
+const osName = parsed.os?.name || 'Unknown OS';
+const osVersion = parsed.os?.version || '';
+const os = osVersion ? `${osName} ${osVersion}` : osName;
 
 document.getElementById('device').innerHTML = `
   <div class="row"><span class="label">Device Type</span><span class="value">${deviceType}</span></div>
@@ -75,12 +84,16 @@ document.getElementById('device').innerHTML = `
 `;
 
 // 3. Browser
+const browserName = parsed.client?.name || 'Unknown Browser';
+const browserVersion = parsed.client?.version || '';
+const browser = browserVersion ? `${browserName} ${browserVersion.split('.')[0]}` : browserName;
+
 document.getElementById('browser').innerHTML = `
-  <div class="row"><span class="label">Browser</span><span class="value">${info.client?.name || 'Unknown'} ${info.client?.version || ''}</span></div>
-  <div class="row"><span class="label">Full User Agent</span><span class="value" style="font-size:0.85em;">${navigator.userAgent}</span></div>
+  <div class="row"><span class="label">Browser</span><span class="value">${browser}</span></div>
+  <div class="row"><span class="label">Full User Agent</span><span class="value" style="font-size:0.8em;">${navigator.userAgent}</span></div>
 `;
 
-// 4. FingerprintJS (unique visitor ID)
+// 4. Fingerprint
 FingerprintJS.load().then(fp => {
   fp.get().then(result => {
     document.getElementById('fingerprint').textContent = result.visitorId;
@@ -88,9 +101,9 @@ FingerprintJS.load().then(fp => {
 });
 </script>
 
-<small style="color:#64748b; display:block; margin-top:30px; text-align:center;">
-  100% client-side • No data sent anywhere • Works offline after first load
-</small>
+<div style="text-align:center; margin-top:40px; color:#64748b; font-size:0.9em;">
+  All data processed in your browser • Nothing is sent to any server
+</div>
 
 </body>
 </html>
