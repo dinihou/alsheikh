@@ -8,7 +8,7 @@
   <!-- FingerprintJS -->
   <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
 
-  <!-- UAParser.js – reliable UA parser with device model detection -->
+  <!-- UAParser.js – super accurate for phone model, Android/iOS version, browser -->
   <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@2/dist/ua-parser.min.js"></script>
 
   <style>
@@ -20,25 +20,24 @@
     .label { color: #94a3b8; font-weight: 500; }
     .value { color: #c4b5fd; font-weight: 600; word-break: break-all; }
     .fingerprint { background: #1e3a8a; padding: 16px; border-radius: 12px; font-family: 'Courier New', monospace; font-size: 1.1em; text-align: center; margin-top: 12px; }
-    .emoji { font-size: 1.3em; margin-right: 8px; }
-    .loading { opacity: 0.6; font-style: italic; }
+    .flag { font-size: 1.4em; margin-right: 8px; }
   </style>
 </head>
 <body>
 
 <div class="card">
   <h2>Network & Location</h2>
-  <div id="network" class="loading">Loading IP and location...</div>
+  <div id="network">Loading IP and location...</div>
 </div>
 
 <div class="card">
   <h2>Device</h2>
-  <div id="device" class="loading">Detecting your device...</div>
+  <div id="device">Detecting your device...</div>
 </div>
 
 <div class="card">
   <h2>Browser</h2>
-  <div id="browser" class="loading">Analyzing browser...</div>
+  <div id="browser">Analyzing browser...</div>
 </div>
 
 <div class="card">
@@ -47,45 +46,48 @@
 </div>
 
 <script>
-// 1. IP + Location (using freeipapi.com – free, no key, full details in one call)
-fetch('https://free.freeipapi.com/api/json/')
+// 1. IP + Location – matches your exact JSON structure
+fetch('https://freeipapi.com/api/json/')
   .then(r => r.json())
   .then(d => {
-    const countryFlag = d.country_code ? String.fromCodePoint(...[...d.country_code].map(c => 0x1F1A5 + c.charCodeAt(0))) : '';
+    const flag = d.countryCode ? String.fromCodePoint(...[...d.countryCode].map(c => 0x1F1A5 + c.charCodeAt(0))) : '';
+    const region = d.regionName ? `, ${d.regionName}` : '';
+
     document.getElementById('network').innerHTML = `
-      <div class="row"><span class="label">IP Address</span><span class="value">${d.ip_address || '—'}</span></div>
-      <div class="row"><span class="label">Location</span><span class="value"><span class="emoji">${countryFlag}</span>${d.city}, ${d.region_name || d.region}, ${d.country_name}</span></div>
-      <div class="row"><span class="label">ISP / Network</span><span class="value">${d.org || d.isp || '—'}</span></div>
-      <div class="row"><span class="label">Timezone</span><span class="value">${d.timezone || '—'}</span></div>
+      <div class="row"><span class="label">IP Address</span><span class="value">${d.ipAddress || '—'}</span></div>
+      <div class="row"><span class="label">Location</span><span class="value"><span class="flag">${flag}</span>${d.cityName}${region}, ${d.countryName}</span></div>
+      <div class="row"><span class="label">ISP / ASN</span><span class="value">${d.asnOrganization || d.asn || '—'}</span></div>
+      <div class="row"><span class="label">Timezone</span><span class="value">${d.timeZones?.[0] || '—'}</span></div>
     `;
   })
-  .catch(e => {
-    document.getElementById('network').innerHTML = '<div class="row"><span class="label">Error</span><span class="value">Could not fetch: ' + e.message + '</span></div>';
+  .catch(() => {
+    document.getElementById('network').innerHTML = '<div class="value">Failed to load location</div>';
   });
 
-// 2. Device Detection (UAParser.js – accurate for models, OS, etc.)
+// 2. Device & OS (UAParser.js – best in class)
 const parser = new UAParser();
-const parsed = parser.getResult();
+const r = parser.getResult();
 
-const deviceType = parsed.device.type || 'desktop'; // 'mobile', 'tablet', 'desktop'
-const vendor = parsed.device.vendor || '';
-const model = parsed.device.model || '';
-const deviceName = (vendor && model) ? `${vendor} ${model}` : (vendor || model || 'Generic Device');
+const deviceType = r.device.type === 'mobile' ? 'Phone' :
+                   r.device.type === 'tablet' ? 'Tablet' :
+                   r.device.type === 'wearable' ? 'Wearable' : 'Desktop/Laptop';
 
-const osName = parsed.os.name || 'Unknown OS';
-const osVersion = parsed.os.version || '';
-const os = osVersion ? `${osName} ${osVersion}` : osName;
+const brand  = r.device.vendor || '';
+const model  = r.device.model || '';
+const device = (brand && model) ? `${brand} ${model}` : (model || 'Unknown Device');
+
+const os = r.os.name && r.os.version ? `${r.os.name} ${r.os.version}` : (r.os.name || 'Unknown OS');
 
 document.getElementById('device').innerHTML = `
-  <div class="row"><span class="label">Device Type</span><span class="value">${deviceType.charAt(0).toUpperCase() + deviceType.slice(1)}</span></div>
-  <div class="row"><span class="label">Model</span><span class="value">${deviceName}</span></div>
+  <div class="row"><span class="label">Device Type</span><span class="value">${deviceType}</span></div>
+  <div class="row"><span class="label">Model</span><span class="value">${device}</span></div>
   <div class="row"><span class="label">Operating System</span><span class="value">${os}</span></div>
 `;
 
 // 3. Browser
-const browserName = parsed.browser.name || 'Unknown Browser';
-const browserVersion = parsed.browser.version || '';
-const browser = browserVersion ? `${browserName} ${browserVersion.split('.')[0]}` : browserName;
+const browser = r.browser.name && r.browser.version 
+  ? `${r.browser.name} ${r.browser.version.split('.')[0]}` 
+  : (r.browser.name || 'Unknown Browser');
 
 document.getElementById('browser').innerHTML = `
   <div class="row"><span class="label">Browser</span><span class="value">${browser}</span></div>
@@ -101,7 +103,7 @@ FingerprintJS.load().then(fp => {
 </script>
 
 <div style="text-align:center; margin-top:40px; color:#64748b; font-size:0.9em;">
-  All data processed in your browser • Nothing is sent to any server
+  100% client-side • No data leaves your browser
 </div>
 
 </body>
